@@ -1,0 +1,11 @@
+- Frontend: Next.js (App Router)
+- Backend: Next.js Server Actions (Co-located logic)
+- Database: Supabase 
+- ORM: Drizzle (TypeScript-first)
+- Validation: Zod
+- UI: Shadcn/UI + Tailwind
+- Testing:
+  - Vitest (unit & integration)
+  - playwright (browser end-to-end)
+  - supabase start (local supabase stack)
+
