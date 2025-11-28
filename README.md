@@ -137,4 +137,6 @@ npm run build
 
 ## License
 
-MIT
+Commercial and private.  
+
+(C) DSC 2025
