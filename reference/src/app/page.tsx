@@ -4,7 +4,12 @@ import { NotesApp } from '@/components/notes-app';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const notes = await getNotes();
+  let notes;
+  try {
+    notes = await getNotes();
+  } catch {
+    notes = [];
+  }
 
   return <NotesApp initialNotes={notes} />;
 }
