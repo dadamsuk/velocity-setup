@@ -105,8 +105,8 @@ async function createNextApp(projectName: string): Promise<void> {
     '--src-dir',
     '--import-alias', '@/*',
     '--use-npm',
-    '--no-turbopack',
-    '--no-react-compiler',
+    '--turbopack',
+    '--react-compiler',
   ]);
 }
 
@@ -134,6 +134,8 @@ async function installDependencies(projectDir: string): Promise<void> {
     'prettier-plugin-tailwindcss',
     'eslint-config-prettier',
     '@eslint/eslintrc',
+    'babel-plugin-react-compiler',
+    'eslint-plugin-react-compiler',
   ];
 
   await execCommand(`npm install ${coreDeps.join(' ')}`, projectDir);
