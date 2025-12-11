@@ -75,6 +75,33 @@ This allows you to:
 - Choose a different region
 - Skip Supabase setup entirely
 
+### Skip Docker Files
+
+If you're only deploying to Vercel and don't need Docker/Coolify support:
+
+```bash
+npm start -- --no-docker
+```
+
+### Destroy a Project
+
+To completely remove a project and its associated resources:
+
+```bash
+npm start destroy my-app
+# or just
+npm start destroy
+# (will prompt for project name)
+```
+
+This will:
+1. Ask for confirmation (you must type the project name)
+2. Let you select what to delete:
+   - GitHub repository (`velocity-<project-name>`)
+   - Supabase project (local containers and data)
+   - Docker resources (containers, volumes, networks)
+3. Delete the project directory
+
 ## What Gets Generated
 
 ```
@@ -89,6 +116,9 @@ your-project/
 │   ├── lib/supabase/    # Supabase client helpers
 │   └── test/            # Vitest setup
 ├── supabase/            # Supabase local config
+├── Dockerfile           # Production Docker build
+├── docker-compose.yml   # Docker Compose with Redis
+├── vercel.json          # Vercel configuration
 ├── drizzle.config.ts    # Drizzle configuration
 ├── vitest.config.ts     # Vitest configuration
 ├── playwright.config.ts # Playwright configuration
@@ -106,6 +136,31 @@ your-project/
 | `npm run db:push` | Push schema to database |
 | `npm run db:studio` | Open Drizzle Studio |
 | `npm run format` | Format code with Prettier |
+
+## Deployment
+
+Generated projects are ready to deploy to **Vercel** or **Coolify** (self-hosted).
+
+### Vercel
+
+1. Push your repo to GitHub
+2. Import the project in [Vercel](https://vercel.com)
+3. Add environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `DATABASE_URL`
+   - `REDIS_URL` (use [Upstash](https://upstash.com) for serverless Redis)
+
+### Coolify (Self-hosted)
+
+1. Create a new service in Coolify using Docker Compose
+2. Point it to your repository
+3. Create `.env.production` with your production environment variables
+4. Deploy
+
+The included `docker-compose.yml` runs your app with Redis. For Supabase:
+- **Supabase Cloud**: Point env vars to your cloud project
+- **Self-hosted Supabase**: Deploy Supabase separately via Coolify's template, then point env vars to it
 
 ## Reference Application
 

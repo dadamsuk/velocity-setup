@@ -4,14 +4,17 @@
     "dockerfile": "Dockerfile"
   },
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": false },
     "ghcr.io/devcontainers/features/node:1": {
       "version": "20"
     },
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/itsmechlark/features/redis-server:1": {},
+    "ghcr.io/meaningful-ooo/devcontainer-features/homebrew:2": {}
   },
-  "postCreateCommand": "npm install && npx supabase start",
-  "postStartCommand": "npx supabase start",
+  "onCreateCommand": "brew install supabase/tap/supabase && supabase completion bash | sudo tee /etc/bash_completion.d/supabase > /dev/null",
+  "postCreateCommand": "npm install && supabase start",
+  "postStartCommand": "supabase start",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -30,11 +33,14 @@
       }
     }
   },
-  "forwardPorts": [3000, 54321, 54322, 54323, 54324],
+  "forwardPorts": [3000, 6379, 54321, 54322, 54323, 54324],
   "portsAttributes": {
     "3000": {
       "label": "Next.js Dev Server",
       "onAutoForward": "openBrowser"
+    },
+    "6379": {
+      "label": "Redis"
     },
     "54321": {
       "label": "Supabase API"

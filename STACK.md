@@ -4,6 +4,7 @@
 - ORM: Drizzle (TypeScript-first)
 - Validation: Zod
 - UI: Shadcn/UI + Tailwind
+- Caching: Redis
 - Testing:
   - Vitest (unit & integration)
   - playwright (browser end-to-end)

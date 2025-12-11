@@ -13,6 +13,21 @@ const __dirname = path.dirname(__filename);
 export interface ScaffolderConfig {
   projectName: string;
   supabase: SupabaseConfig;
+  includeDocker: boolean;
+  port: number;
+}
+
+/**
+ * Generate a deterministic port from a project name.
+ * Returns a port in the range 3001-3999.
+ */
+export function getPortFromName(name: string): number {
+  let hash = 0;
+  for (const char of name) {
+    hash = ((hash << 5) - hash) + char.charCodeAt(0);
+    hash |= 0;
+  }
+  return 3001 + (Math.abs(hash) % 999);
 }
 
 export async function runScaffolder(config: ScaffolderConfig): Promise<void> {
@@ -38,12 +53,12 @@ export async function runScaffolder(config: ScaffolderConfig): Promise<void> {
 
   // Step 4: Copy configuration files
   s.start('Generating configuration files...');
-  await copyConfigFiles(templatesDir, projectDir);
+  await copyConfigFiles(templatesDir, projectDir, config.port);
   s.stop(pc.green('✓ Configuration files generated'));
 
   // Step 5: Set up devcontainer
   s.start('Setting up devcontainer...');
-  await setupDevcontainer(templatesDir, projectDir, config.projectName);
+  await setupDevcontainer(templatesDir, projectDir, config.projectName, config.port);
   s.stop(pc.green('✓ Devcontainer configured'));
 
   // Step 6: Set up VS Code
@@ -58,7 +73,7 @@ export async function runScaffolder(config: ScaffolderConfig): Promise<void> {
 
   // Step 8: Create environment files
   s.start('Creating environment files...');
-  await createEnvFiles(templatesDir, projectDir);
+  await createEnvFiles(templatesDir, projectDir, config.port);
   s.stop(pc.green('✓ Environment files created'));
 
   // Step 9: Update package.json scripts
@@ -71,7 +86,12 @@ export async function runScaffolder(config: ScaffolderConfig): Promise<void> {
   await createReadme(templatesDir, projectDir, config.projectName);
   s.stop(pc.green('✓ README created'));
 
-  // Step 11: Set up Supabase (if not skipped)
+  // Step 11: Set up deployment files
+  s.start('Setting up deployment configuration...');
+  await setupDeployment(templatesDir, projectDir, config.includeDocker, config.port);
+  s.stop(pc.green('✓ Deployment configuration created'));
+
+  // Step 12: Set up Supabase (if not skipped)
   if (config.supabase.mode !== 'skip') {
     const hasSupabaseCli = await checkSupabaseCli();
     if (!hasSupabaseCli) {
@@ -88,7 +108,7 @@ export async function runScaffolder(config: ScaffolderConfig): Promise<void> {
     }
   }
 
-  // Step 12: Initialize git and create GitHub repo
+  // Step 13: Initialize git and create GitHub repo
   s.start('Initializing git repository...');
   await initGit(projectDir, config.projectName);
   s.stop(pc.green('✓ Git repository initialized and pushed to GitHub'));
@@ -156,7 +176,7 @@ async function setupShadcn(projectDir: string): Promise<void> {
   }
 }
 
-async function copyConfigFiles(templatesDir: string, projectDir: string): Promise<void> {
+async function copyConfigFiles(templatesDir: string, projectDir: string, port: number): Promise<void> {
   const configFiles = [
     { src: 'config/drizzle.config.ts', dest: 'drizzle.config.ts' },
     { src: 'config/vitest.config.ts', dest: 'vitest.config.ts' },
@@ -166,7 +186,8 @@ async function copyConfigFiles(templatesDir: string, projectDir: string): Promis
   ];
 
   for (const { src, dest } of configFiles) {
-    const content = await fs.readFile(path.join(templatesDir, src), 'utf-8');
+    let content = await fs.readFile(path.join(templatesDir, src), 'utf-8');
+    content = content.replace(/\{\{port\}\}/g, String(port));
     await writeFile(path.join(projectDir, dest), content);
   }
 
@@ -181,7 +202,8 @@ async function copyConfigFiles(templatesDir: string, projectDir: string): Promis
 async function setupDevcontainer(
   templatesDir: string,
   projectDir: string,
-  projectName: string
+  projectName: string,
+  port: number
 ): Promise<void> {
   const devcontainerDir = path.join(projectDir, '.devcontainer');
   await ensureDir(devcontainerDir);
@@ -192,6 +214,7 @@ async function setupDevcontainer(
     'utf-8'
   );
   devcontainerJson = devcontainerJson.replace(/\{\{projectName\}\}/g, projectName);
+  devcontainerJson = devcontainerJson.replace(/\{\{port\}\}/g, String(port));
   await writeFile(path.join(devcontainerDir, 'devcontainer.json'), devcontainerJson);
 
   // Copy Dockerfile
@@ -247,9 +270,12 @@ async function copyExampleCode(templatesDir: string, projectDir: string): Promis
   );
 }
 
-async function createEnvFiles(templatesDir: string, projectDir: string): Promise<void> {
+async function createEnvFiles(templatesDir: string, projectDir: string, port: number): Promise<void> {
   // Create .env.local with local development defaults
-  const envLocal = `# Supabase (Local Development)
+  const envLocal = `# Development Server Port
+PORT=${port}
+
+# Supabase (Local Development)
 NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
 
@@ -274,6 +300,33 @@ async function createReadme(
   let readme = await fs.readFile(path.join(templatesDir, 'README.md'), 'utf-8');
   readme = readme.replace(/\{\{projectName\}\}/g, projectName);
   await writeFile(path.join(projectDir, 'README.md'), readme);
+}
+
+async function setupDeployment(
+  templatesDir: string,
+  projectDir: string,
+  includeDocker: boolean,
+  port: number
+): Promise<void> {
+  const deployDir = path.join(templatesDir, 'deploy');
+
+  // Always copy vercel.json
+  const vercelJson = await fs.readFile(path.join(deployDir, 'vercel.json'), 'utf-8');
+  await writeFile(path.join(projectDir, 'vercel.json'), vercelJson);
+
+  // Copy Docker files if enabled (default)
+  if (includeDocker) {
+    let dockerfile = await fs.readFile(path.join(deployDir, 'Dockerfile'), 'utf-8');
+    dockerfile = dockerfile.replace(/\{\{port\}\}/g, String(port));
+    await writeFile(path.join(projectDir, 'Dockerfile'), dockerfile);
+
+    let dockerCompose = await fs.readFile(path.join(deployDir, 'docker-compose.yml'), 'utf-8');
+    dockerCompose = dockerCompose.replace(/\{\{port\}\}/g, String(port));
+    await writeFile(path.join(projectDir, 'docker-compose.yml'), dockerCompose);
+
+    const dockerignore = await fs.readFile(path.join(deployDir, '.dockerignore'), 'utf-8');
+    await writeFile(path.join(projectDir, '.dockerignore'), dockerignore);
+  }
 }
 
 async function updatePackageJson(projectDir: string): Promise<void> {
